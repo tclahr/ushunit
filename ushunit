@@ -1,0 +1,974 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# shellcheck disable=SC2003,SC2006,SC2317
+
+# Check if command exists.
+# Arguments:
+#   string command: command
+# Returns:
+#   boolean: true on success
+#            false on fail
+commandExists()
+{
+  __ushunit_ce_command="${1:-}"
+
+  if [ -z "${__ushunit_ce_command}" ]; then
+    return 1
+  fi
+
+  if eval type type >/dev/null 2>/dev/null; then
+    eval type "${__ushunit_ce_command}" >/dev/null 2>/dev/null
+  elif command >/dev/null 2>/dev/null; then
+    command -v "${__ushunit_ce_command}" >/dev/null 2>/dev/null
+  else
+    which "${__ushunit_ce_command}" >/dev/null 2>/dev/null
+  fi
+}
+
+# Test whether two values are equal.
+# Arguments:
+#   string message: failure message [optional]
+#   string expected: expected value
+#   string actual: value to be compared against
+# Returns:
+#   boolean: true on success
+#            false on fail
+assertEquals()
+{
+  if [ ${#} -lt 2 ] || [ ${#} -gt 3 ]; then
+    _ushunit_exit_fatal "assertEquals() requires two or three arguments: ${#} given"
+  fi
+
+  __ushunit_eq_custom_message=""
+  if [ ${#} -eq 3 ]; then
+    __ushunit_eq_custom_message="${1:-}"
+    shift
+  fi
+  __ushunit_eq_expected="${1:-}"
+  __ushunit_eq_actual="${2:-}"
+  __ushunit_eq_retunc_code=1
+
+  _ushunit_log_msg "assertEquals \"${__ushunit_eq_expected}\" \"${__ushunit_eq_actual}\""
+
+  if [ "${__ushunit_eq_actual}" = "${__ushunit_eq_expected}" ]; then
+    __ushunit_eq_retunc_code=0
+    _ushunit_assert_pass
+  else
+    __ushunit_eq_fail_message="# Failed assertEquals: ${__ushunit_eq_custom_message}${__ushunit_eq_custom_message:+: }expected [${__ushunit_eq_expected}], but got [${__ushunit_eq_actual}]"
+    _ushunit_assert_fail "${__ushunit_eq_fail_message}"
+  fi
+  
+  return "${__ushunit_eq_retunc_code}"
+}
+
+# Test whether two values are not equal.
+# Arguments:
+#   string message: failure message [optional]
+#   string expected: expected value
+#   string actual: value to be compared against
+# Returns:
+#   boolean: true on success
+#            false on fail
+assertNotEquals()
+{
+  if [ ${#} -lt 2 ] || [ ${#} -gt 3 ]; then
+    _ushunit_exit_fatal "assertNotEquals() requires two or three arguments: ${#} given"
+  fi
+
+  __ushunit_nq_custom_message=""
+  if [ ${#} -eq 3 ]; then
+    __ushunit_nq_custom_message="${1:-}"
+    shift
+  fi
+  __ushunit_nq_expected="${1:-}"
+  __ushunit_nq_actual="${2:-}"
+  __ushunit_nq_retunc_code=1
+
+  _ushunit_log_msg "assertNotEquals \"${__ushunit_nq_expected}\" \"${__ushunit_nq_actual}\""
+
+  if [ "${__ushunit_nq_actual}" != "${__ushunit_nq_expected}" ]; then
+    __ushunit_nq_retunc_code=0
+    _ushunit_assert_pass
+  else
+    __ushunit_nq_fail_message="# Failed assertNotEquals: ${__ushunit_nq_custom_message}${__ushunit_nq_custom_message:+: }expected not [${__ushunit_nq_actual}]"
+    _ushunit_assert_fail "${__ushunit_nq_fail_message}"
+  fi
+  
+  return "${__ushunit_nq_retunc_code}"
+}
+
+# Tests whether the specified condition evaluates as true.
+# Arguments:
+#   string message: failure message [optional]
+#   string condition: shell command or conditional statement
+# Returns:
+#   boolean: true on success
+#            false on fail
+assertTrue()
+{
+  if [ ${#} -lt 1 ] || [ ${#} -gt 2 ]; then
+    _ushunit_exit_fatal "assertTrue() requires one or two arguments: ${#} given"
+  fi
+
+  __ushunit_tr_custom_message=""
+  if [ ${#} -eq 2 ]; then
+    __ushunit_tr_custom_message="${1:-}"
+    shift
+  fi
+  __ushunit_tr_condition="${1:-}"
+  __ushunit_tr_retunc_code=1
+
+  _ushunit_log_msg "assertTrue \"${__ushunit_tr_condition}\""
+
+  if ( eval "${__ushunit_tr_condition}" ); then
+    __ushunit_tr_retunc_code=0
+    _ushunit_assert_pass
+  else
+    __ushunit_tr_fail_message="# Failed assertTrue: ${__ushunit_tr_custom_message}${__ushunit_tr_custom_message:+: }condition [${__ushunit_tr_condition}] expected to evaluate as true, but evaluated as false"
+    _ushunit_assert_fail "${__ushunit_tr_fail_message}"
+  fi
+  
+  return "${__ushunit_tr_retunc_code}"
+}
+
+# Tests whether the specified condition evaluates as false.
+# Arguments:
+#   string message: failure message [optional]
+#   string condition: shell command or conditional statement
+# Returns:
+#   boolean: true on success
+#            false on fail
+assertFalse()
+{
+  if [ ${#} -lt 1 ] || [ ${#} -gt 2 ]; then
+    _ushunit_exit_fatal "assertFalse() requires one or two arguments: ${#} given"
+  fi
+
+  __ushunit_fa_custom_message=""
+  if [ ${#} -eq 2 ]; then
+    __ushunit_fa_custom_message="${1:-}"
+    shift
+  fi
+  __ushunit_fa_condition="${1:-}"
+  __ushunit_fa_retunc_code=1
+
+  _ushunit_log_msg "assertFalse \"${__ushunit_fa_condition}\""
+
+  if ( eval "${__ushunit_fa_condition}" ); then
+    __ushunit_fa_fail_message="# Failed assertFalse: ${__ushunit_fa_custom_message}${__ushunit_fa_custom_message:+: }condition [${__ushunit_fa_condition}] expected to evaluate as false, but evaluated as true"
+    _ushunit_assert_fail "${__ushunit_fa_fail_message}"
+  else
+    __ushunit_fa_retunc_code=0
+    _ushunit_assert_pass
+  fi
+  
+  return "${__ushunit_fa_retunc_code}"
+}
+
+# Tests whether the specified string is null (i.e. an empty string).
+# Arguments:
+#   string message: failure message [optional]
+#   string string: string
+# Returns:
+#   boolean: true on success
+#            false on fail
+assertNull()
+{
+  if [ ${#} -lt 1 ] || [ ${#} -gt 2 ]; then
+    _ushunit_exit_fatal "assertNull() requires one or two arguments: ${#} given"
+  fi
+
+  __ushunit_nu_custom_message=""
+  if [ ${#} -eq 2 ]; then
+    __ushunit_nu_custom_message="${1:-}"
+    shift
+  fi
+  __ushunit_nu_actual="${1:-}"
+  __ushunit_nu_retunc_code=1
+
+  if [ -z "${__ushunit_nu_actual}" ]; then
+    __ushunit_nu_retunc_code=0
+    _ushunit_assert_pass
+  else
+    __ushunit_nu_fail_message="# Failed assertNull: ${__ushunit_nu_custom_message}${__ushunit_nu_custom_message:+: }expected empty string, but got [${__ushunit_nu_actual}]"
+    _ushunit_assert_fail "${__ushunit_nu_fail_message}"
+  fi
+  
+  return "${__ushunit_nu_retunc_code}"
+}
+
+# Tests whether the specified string is not null (i.e. string not empty).
+# Arguments:
+#   string message: failure message [optional]
+#   string string: string
+# Returns:
+#   boolean: true on success
+#            false on fail
+assertNotNull()
+{
+  if [ ${#} -lt 1 ] || [ ${#} -gt 2 ]; then
+    _ushunit_exit_fatal "assertNotNull() requires one or two arguments: ${#} given"
+  fi
+
+  __ushunit_nn_custom_message=""
+  if [ ${#} -eq 2 ]; then
+    __ushunit_nn_custom_message="${1:-}"
+    shift
+  fi
+  __ushunit_nn_actual="${1:-}"
+  __ushunit_nn_retunc_code=1
+
+  if [ -n "${__ushunit_nn_actual}" ]; then
+    __ushunit_nn_retunc_code=0
+    _ushunit_assert_pass
+  else
+    __ushunit_nn_fail_message="# Failed assertNotNull: ${__ushunit_nn_custom_message}${__ushunit_nn_custom_message:+: }expected not empty string, but got [${__ushunit_nn_actual}]"
+    _ushunit_assert_fail "${__ushunit_nn_fail_message}"
+  fi
+  
+  return "${__ushunit_nn_retunc_code}"
+}
+
+# Tests whether a container contains a content.
+# Arguments:
+#   string message: failure message [optional]
+#   boolean regex: true if content is a regex pattern (default: false) [optional]
+#   string container: container to analyze
+#   string content: content to find
+# Returns:
+#   boolean: true on success
+#            false on fail
+assertContains()
+{
+  if [ ${#} -lt 2 ] || [ ${#} -gt 4 ]; then
+    _ushunit_exit_fatal "assertContains() requires two or four arguments: ${#} given"
+  fi
+
+  __ushunit_co_custom_message=""
+  __ushunit_co_regex=false
+  if [ ${#} -eq 4 ]; then
+    __ushunit_co_custom_message="${1:-}"
+    shift
+    __ushunit_co_regex="${1}"
+    shift
+  elif [ ${#} -eq 3 ]; then
+    if [ "${1}" = true ] || [ "${1}" = false ]; then
+      __ushunit_co_regex="${1}"
+    else
+      __ushunit_co_custom_message="${1:-}"
+    fi
+    shift
+  fi
+  __ushunit_co_container="${1:-}"
+  __ushunit_co_content="${2:-}"
+  __ushunit_co_retunc_code=1
+  __ushunit_co_grep_option="-F"
+
+  if ${__ushunit_co_regex}; then
+    __ushunit_co_grep_option="-E"
+  fi
+
+  if echo "${__ushunit_co_container}" | grep -q "${__ushunit_co_grep_option}" "${__ushunit_co_content}"; then
+    __ushunit_co_retunc_code=0
+    _ushunit_assert_pass
+  else
+    __ushunit_co_fail_message="# Failed assertContains: ${__ushunit_co_custom_message}${__ushunit_co_custom_message:+: }expected [${__ushunit_co_container}] to contain [${__ushunit_co_content}]"
+    _ushunit_assert_fail "${__ushunit_co_fail_message}"
+  fi
+  
+  return "${__ushunit_co_retunc_code}"
+}
+
+# Tests whether a container does not contain a content.
+# Arguments:
+#   string message: failure message [optional]
+#   boolean regex: true if content is a regex pattern (default: false) [optional]
+#   string container: container to analyze
+#   string content: content to look for
+# Returns:
+#   boolean: true on success
+#            false on fail
+assertNotContains()
+{
+  if [ ${#} -lt 2 ] || [ ${#} -gt 4 ]; then
+    _ushunit_exit_fatal "assertNotContains() requires two or four arguments: ${#} given"
+  fi
+
+  __ushunit_nc_custom_message=""
+  __ushunit_nc_regex=false
+  if [ ${#} -eq 4 ]; then
+    __ushunit_nc_custom_message="${1:-}"
+    shift
+    __ushunit_nc_regex="${1}"
+    shift
+  elif [ ${#} -eq 3 ]; then
+    if [ "${1}" = true ] || [ "${1}" = false ]; then
+      __ushunit_nc_regex="${1}"
+    else
+      __ushunit_nc_custom_message="${1:-}"
+    fi
+    shift
+  fi
+  __ushunit_nc_container="${1:-}"
+  __ushunit_nc_content="${2:-}"
+  __ushunit_nc_retunc_code=1
+  __ushunit_nc_grep_option="-F"
+
+  if ${__ushunit_nc_regex}; then
+    __ushunit_nc_grep_option="-E"
+  fi
+
+  if echo "${__ushunit_nc_container}" | grep -q "${__ushunit_nc_grep_option}" "${__ushunit_nc_content}"; then
+    __ushunit_nc_fail_message="# Failed assertNotContains: ${__ushunit_nc_custom_message}${__ushunit_nc_custom_message:+: }expected [${__ushunit_nc_container}] to not contain [${__ushunit_nc_content}]"
+    _ushunit_assert_fail "${__ushunit_nc_fail_message}"
+  else
+    __ushunit_nc_retunc_code=0
+    _ushunit_assert_pass
+  fi
+  
+  return "${__ushunit_nc_retunc_code}"
+}
+
+# Tests whether a file contains a content.
+# Arguments:
+#   string message: failure message [optional]
+#   boolean regex: true if content is a regex pattern (default: false) [optional]
+#   string file: file to analyze
+#   string content: content to find
+# Returns:
+#   boolean: true on success
+#            false on fail
+assertFileContains()
+{
+  if [ ${#} -lt 2 ] || [ ${#} -gt 4 ]; then
+    _ushunit_exit_fatal "assertFileContains() requires two or four arguments: ${#} given"
+  fi
+
+  __ushunit_ir_custom_message=""
+  __ushunit_ir_regex=false
+  if [ ${#} -eq 4 ]; then
+    __ushunit_ir_custom_message="${1:-}"
+    shift
+    __ushunit_ir_regex="${1}"
+    shift
+  elif [ ${#} -eq 3 ]; then
+    if [ "${1}" = true ] || [ "${1}" = false ]; then
+      __ushunit_ir_regex="${1}"
+    else
+      __ushunit_ir_custom_message="${1:-}"
+    fi
+    shift
+  fi
+  __ushunit_ir_container="${1:-}"
+  __ushunit_ir_content="${2:-}"
+  __ushunit_ir_retunc_code=1
+  __ushunit_ir_grep_option="-F"
+
+  if ${__ushunit_ir_regex}; then
+    __ushunit_ir_grep_option="-E"
+  fi
+
+  if grep -q "${__ushunit_ir_grep_option}" "${__ushunit_ir_content}" "${__ushunit_ir_container}"; then
+    __ushunit_ir_retunc_code=0
+    _ushunit_assert_pass
+  else
+    __ushunit_ir_fail_message="# Failed assertFileContains: ${__ushunit_ir_custom_message}${__ushunit_ir_custom_message:+: }expected [${__ushunit_ir_container}] to contain [${__ushunit_ir_content}]"
+    _ushunit_assert_fail "${__ushunit_ir_fail_message}"
+  fi
+  
+  return "${__ushunit_ir_retunc_code}"
+}
+
+# Tests whether a file does not contain a content.
+# Arguments:
+#   string message: failure message [optional]
+#   boolean regex: true if content is a regex pattern (default: false) [optional]
+#   string file: file to analyze
+#   string content: content to look for
+# Returns:
+#   boolean: true on success
+#            false on fail
+assertFileNotContains()
+{
+  if [ ${#} -lt 2 ] || [ ${#} -gt 4 ]; then
+    _ushunit_exit_fatal "assertFileNotContains() requires two or four arguments: ${#} given"
+  fi
+
+  __ushunit_in_custom_message=""
+  __ushunit_in_regex=false
+  if [ ${#} -eq 4 ]; then
+    __ushunit_in_custom_message="${1:-}"
+    shift
+    __ushunit_in_regex="${1}"
+    shift
+  elif [ ${#} -eq 3 ]; then
+    if [ "${1}" = true ] || [ "${1}" = false ]; then
+      __ushunit_in_regex="${1}"
+    else
+      __ushunit_in_custom_message="${1:-}"
+    fi
+    shift
+  fi
+  __ushunit_in_container="${1:-}"
+  __ushunit_in_content="${2:-}"
+  __ushunit_in_retunc_code=1
+  __ushunit_in_grep_option="-F"
+
+  if ${__ushunit_in_regex}; then
+    __ushunit_in_grep_option="-E"
+  fi
+
+  if grep -q "${__ushunit_in_grep_option}" "${__ushunit_in_content}" "${__ushunit_in_container}"; then
+    __ushunit_in_fail_message="# Failed assertFileNotContains: ${__ushunit_in_custom_message}${__ushunit_in_custom_message:+: }expected [${__ushunit_in_container}] to not contain [${__ushunit_in_content}]"
+    _ushunit_assert_fail "${__ushunit_in_fail_message}"
+  else
+    __ushunit_in_retunc_code=0
+    _ushunit_assert_pass
+  fi
+  
+  return "${__ushunit_in_retunc_code}"
+}
+
+# Test whether a file exists.
+# Arguments:
+#   string message: failure message [optional]
+#   string file: file path
+# Returns:
+#   boolean: true on success
+#            false on fail
+assertFileExists()
+{
+  if [ ${#} -lt 1 ] || [ ${#} -gt 2 ]; then
+    _ushunit_exit_fatal "assertFileExists() requires one or two arguments: ${#} given"
+  fi
+
+  __ushunit_fe_custom_message=""
+  if [ ${#} -eq 2 ]; then
+    __ushunit_fe_custom_message="${1:-}"
+    shift
+  fi
+  __ushunit_fe_file="${1:-}"
+  __ushunit_fe_retunc_code=1
+
+  if [ -f "${__ushunit_fe_file}" ]; then
+    __ushunit_fe_retunc_code=0
+    _ushunit_assert_pass
+  else
+    __ushunit_fe_fail_message="# Failed assertFileExists: ${__ushunit_fe_custom_message}${__ushunit_fe_custom_message:+: }expected [${__ushunit_fe_file}] to exist"
+    _ushunit_assert_fail "${__ushunit_fe_fail_message}"
+  fi
+  
+  return "${__ushunit_fe_retunc_code}"
+}
+
+# Test whether a file does not exist.
+# Arguments:
+#   string message: failure message [optional]
+#   string file: file path
+# Returns:
+#   boolean: true on success
+#            false on fail
+assertFileNotExists()
+{
+  if [ ${#} -lt 1 ] || [ ${#} -gt 2 ]; then
+    _ushunit_exit_fatal "assertFileNotExists() requires one or two arguments: ${#} given"
+  fi
+
+  __ushunit_fn_custom_message=""
+  if [ ${#} -eq 2 ]; then
+    __ushunit_fn_custom_message="${1:-}"
+    shift
+  fi
+  __ushunit_fn_file="${1:-}"
+  __ushunit_fn_retunc_code=1
+
+  if [ -f "${__ushunit_fn_file}" ]; then
+    __ushunit_fn_fail_message="# Failed assertFileNotExists: ${__ushunit_fn_custom_message}${__ushunit_fn_custom_message:+: }expected [${__ushunit_fn_file}] to not exist"
+    _ushunit_assert_fail "${__ushunit_fn_fail_message}"
+  else
+    __ushunit_fn_retunc_code=0
+    _ushunit_assert_pass
+  fi
+  
+  return "${__ushunit_fn_retunc_code}"
+}
+
+# Test whether a directory exists.
+# Arguments:
+#   string message: failure message [optional]
+#   string directory: directory path
+# Returns:
+#   boolean: true on success
+#            false on fail
+assertDirectoryExists()
+{
+  if [ ${#} -lt 1 ] || [ ${#} -gt 2 ]; then
+    _ushunit_exit_fatal "assertDirectoryExists() requires one or two arguments: ${#} given"
+  fi
+
+  __ushunit_de_custom_message=""
+  if [ ${#} -eq 2 ]; then
+    __ushunit_de_custom_message="${1:-}"
+    shift
+  fi
+  __ushunit_de_directory="${1:-}"
+  __ushunit_de_retunc_code=1
+
+  if [ -d "${__ushunit_de_directory}" ]; then
+    __ushunit_de_retunc_code=0
+    _ushunit_assert_pass
+  else
+    __ushunit_de_fail_message="# Failed assertDirectoryExists: ${__ushunit_de_custom_message}${__ushunit_de_custom_message:+: }expected [${__ushunit_de_directory}] to exist"
+    _ushunit_assert_fail "${__ushunit_de_fail_message}"
+  fi
+  
+  return "${__ushunit_de_retunc_code}"
+}
+
+# Test whether a directory does not exist.
+# Arguments:
+#   string message: failure message [optional]
+#   string directory: directory path
+# Returns:
+#   boolean: true on success
+#            false on fail
+assertDirectoryNotExists()
+{
+  if [ ${#} -lt 1 ] || [ ${#} -gt 2 ]; then
+    _ushunit_exit_fatal "assertDirectoryNotExists() requires one or two arguments: ${#} given"
+  fi
+
+  __ushunit_dn_custom_message=""
+  if [ ${#} -eq 2 ]; then
+    __ushunit_dn_custom_message="${1:-}"
+    shift
+  fi
+  __ushunit_dn_directory="${1:-}"
+  __ushunit_dn_retunc_code=1
+
+  if [ -d "${__ushunit_dn_directory}" ]; then
+    __ushunit_dn_fail_message="# Failed assertDirectoryNotExists: ${__ushunit_dn_custom_message}${__ushunit_dn_custom_message:+: }expected [${__ushunit_dn_directory}] to not exist"
+    _ushunit_assert_fail "${__ushunit_dn_fail_message}"
+  else
+    __ushunit_dn_retunc_code=0
+    _ushunit_assert_pass
+  fi
+  
+  return "${__ushunit_dn_retunc_code}"
+}
+
+# Skip test.
+# Arguments:
+#   none
+# Returns:
+#   none
+skipTest()
+{
+  __USHUNIT_CURRENT_TEST_SKIPPED=true
+  __USHUNIT_CURRENT_TEST_SKIP_MESSAGE=""
+  if [ -n "${1:-}" ]; then
+    __USHUNIT_CURRENT_TEST_SKIP_MESSAGE=": ${1}"
+  fi
+}
+
+# Record a passed assert.
+# Arguments:
+#   none
+# Returns:
+#   none
+_ushunit_assert_pass()
+{
+  __USHUNIT_CURRENT_TEST_ASSERTS_PASSED=`expr "${__USHUNIT_CURRENT_TEST_ASSERTS_PASSED}" + 1`
+}
+
+# Record a failed assert.
+# Arguments:
+#   string message: failure message [optional]
+# Returns:
+#   none
+_ushunit_assert_fail()
+{
+  __ushunit_message="${1:-}"
+
+  __USHUNIT_CURRENT_TEST_FAIL_MESSAGES="${__USHUNIT_CURRENT_TEST_FAIL_MESSAGES}${__USHUNIT_CURRENT_TEST_FAIL_MESSAGES:+
+}  ${__ushunit_message}"
+  __USHUNIT_CURRENT_TEST_ASSERTS_FAILED=`expr "${__USHUNIT_CURRENT_TEST_ASSERTS_FAILED}" + 1`
+  __USHUNIT_CURRENT_TEST_EXIT_CODE=1
+}
+
+# Perform exit of the program.
+# Arguments:
+#   string exit_code: exit code (default: 2)
+#   string message: error message
+# Returns:
+#   none
+_ushunit_exit_fatal()
+{
+  __ushunit_ef_exit_code=2
+  if [ ${#} -eq 2 ]; then
+    __ushunit_ef_exit_code="${1:-}"
+    shift
+  fi
+  __ushunit_ef_message="${1:-}"
+
+  printf "%s: %s\n" "${0}" "${__ushunit_ef_message}"
+  exit "${__ushunit_ef_exit_code}"
+}
+
+# Create a temporary directory to store various run-time files in.
+# Arguments:
+#   string path: temp directory path
+# Returns:
+#   boolean: true on success
+#            false on fail
+_ushunit_mktemp()
+{
+  __ushunit_mt_path="${1:-}"
+  __ushunit_mt_date=`date "+%Y%m%d%H%M%S"`
+  
+  if [ -n "${__ushunit_mt_path}" ]; then
+    if mkdir "${__ushunit_mt_path}/ushunit.${__ushunit_mt_date}" 2>/dev/null; then
+      echo "${__ushunit_mt_path}/ushunit.${__ushunit_mt_date}"
+      return 0
+    fi
+  elif mktemp -q -d -t "ushunit.XXXXXX" 2>/dev/null; then
+    return 0
+  elif mktemp -q -d "${__ushunit_mt_path}/ushunit.XXXXXX" 2>/dev/null; then
+    return 0
+  else
+    if mkdir "/tmp/ushunit.${__ushunit_mt_date}" 2>/dev/null; then
+      echo "/tmp/ushunit.${__ushunit_mt_date}"
+      return 0
+    fi
+  fi
+  return 1
+}
+
+# Clean up temporary directory.
+# Arguments:
+#   none
+# Returns:
+#   integer: exit code 2
+_ushunit_clean_up()
+{
+  if ${__USHUNIT_DEBUG_MODE}; then
+    printf "Temporary data directory not removed '%s'\n" "${USHUNIT_TEMP_DIR}"
+  elif [ -d "${USHUNIT_TEMP_DIR}" ] && { echo "${USHUNIT_TEMP_DIR}" | grep -q -F "ushunit"; }; then
+    rm -rf "${USHUNIT_TEMP_DIR}" >/dev/null 2>/dev/null
+    if [ -d "${USHUNIT_TEMP_DIR}" ]; then
+      _ushunit_exit_fatal "cannot remove temporary directory '${USHUNIT_TEMP_DIR}'"
+    fi
+  fi
+}
+
+# Clean up and exit.
+# Arguments:
+#   string temp_dir: path to the temporary directory
+# Returns:
+#   integer: exit code 2
+_ushunit_terminate()
+{
+  printf "\n%s\n" "Caught signal! Cleaning up and quitting..."
+  _ushunit_clean_up
+  exit 2
+}
+
+# Write message to log file.
+# Arguments:
+#   string message: log message
+# Returns:
+#   None
+_ushunit_log_msg()
+{
+  __ushunit_lm_message="${1:-}"
+  printf "%s\n" "${__ushunit_lm_message}" >>"${USHUNIT_TEMP_DIR}/${__USHUNIT_LOG_FILE}"
+}
+
+# Run all tests from a test file.
+# Arguments:
+#   integer current_test_number: current test number
+#   string test_file: full path to the test file
+# Returns:
+#   boolean: true if all asserts return true
+#            false if any assert returns false
+_ushunit_run_test_file()
+{
+  __ushunit_rt_current_test_number="${1:-}"
+  __ushunit_rt_test_file="${2:-}"
+  __ushunit_rt_exit_code=0
+  __ushunit_rt_tests_passed=0
+  __ushunit_rt_tests_failed=0
+  __ushunit_rt_tests_skipped=0
+  __ushunit_rt_asserts_passed=0
+  __ushunit_rt_asserts_failed=0
+
+  __ushunit_rt_tests=`grep -E "${__USHUNIT_TEST_FUNCTION_NAME_REGEX}" "${__ushunit_rt_test_file}" \
+                        | sed -e 's|^ *function||' \
+                              -e 's|^ *||' \
+                              -e 's|().*||g'`
+
+  # stub functions
+  oneTimeSetUp() { :; }
+  setUp() { :; }
+  tearDown() { :; }
+  oneTimeTearDown() { :; }
+
+  # shellcheck disable=SC1090
+  . "${__ushunit_rt_test_file}"
+  oneTimeSetUp || _ushunit_exit_fatal "${__ushunit_rt_test_file}: oneTimeSetUp() returned non-zero exit code"
+
+  for __ushunit_rt_test in ${__ushunit_rt_tests}; do
+    __ushunit_rt_current_test_number=`expr "${__ushunit_rt_current_test_number}" + 1`
+    __USHUNIT_CURRENT_TEST_EXIT_CODE=0
+    __USHUNIT_CURRENT_TEST_FAIL_MESSAGES=""
+    __USHUNIT_CURRENT_TEST_SKIPPED=false
+    __USHUNIT_CURRENT_TEST_SKIP_MESSAGE=""
+    __USHUNIT_CURRENT_TEST_ASSERTS_PASSED=0
+    __USHUNIT_CURRENT_TEST_ASSERTS_FAILED=0
+    __ushunit_rt_test_result_message="ok ${__ushunit_rt_current_test_number} - ${__ushunit_rt_test}"
+
+    _ushunit_log_msg "${__ushunit_rt_current_test_number} - ${__ushunit_rt_test_file}"
+
+    setUp || _ushunit_exit_fatal "${__ushunit_rt_test_file}: setUp() returned non-zero exit code"
+
+    "${__ushunit_rt_test}" \
+      >>"${USHUNIT_TEMP_DIR}/${__USHUNIT_LOG_FILE}" \
+      2>>"${USHUNIT_TEMP_DIR}/${__USHUNIT_LOG_FILE}"
+    __ushunit_rt_exit_code=`expr "${__USHUNIT_CURRENT_TEST_EXIT_CODE}" \| "${__ushunit_rt_exit_code}"`
+
+    tearDown || _ushunit_exit_fatal "${__ushunit_rt_test_file}: tearDown() returned non-zero exit code"
+
+    if ${__USHUNIT_CURRENT_TEST_SKIPPED}; then
+      __USHUNIT_CURRENT_TEST_ASSERTS_PASSED=0
+      __USHUNIT_CURRENT_TEST_ASSERTS_FAILED=0
+      __ushunit_rt_tests_skipped=`expr "${__ushunit_rt_tests_skipped}" + 1`
+      __ushunit_rt_test_result_message="${__ushunit_rt_test_result_message} # Skipped${__USHUNIT_CURRENT_TEST_SKIP_MESSAGE}"
+    elif [ ${__USHUNIT_CURRENT_TEST_EXIT_CODE} -eq 0 ]; then
+      __ushunit_rt_tests_passed=`expr "${__ushunit_rt_tests_passed}" + 1`
+    else
+      __ushunit_rt_tests_failed=`expr "${__ushunit_rt_tests_failed}" + 1`
+      __ushunit_rt_test_result_message="no ${__ushunit_rt_test_result_message}"
+    fi
+
+    __ushunit_rt_asserts_passed=`expr "${__ushunit_rt_asserts_passed}" + "${__USHUNIT_CURRENT_TEST_ASSERTS_PASSED}"`
+    __ushunit_rt_asserts_failed=`expr "${__ushunit_rt_asserts_failed}" + "${__USHUNIT_CURRENT_TEST_ASSERTS_FAILED}"`
+    
+    printf "%s\n" "${__ushunit_rt_test_result_message}"
+    if [ -n "${__USHUNIT_CURRENT_TEST_FAIL_MESSAGES}" ]; then
+      printf "%s\n" "${__USHUNIT_CURRENT_TEST_FAIL_MESSAGES}"
+    fi
+
+  done
+
+  oneTimeTearDown || _ushunit_exit_fatal "${__ushunit_rt_test_file}: oneTimeTearDown() returned non-zero exit code"
+
+  # store statistics into temp files
+  printf "%s" "${__ushunit_rt_tests_passed}" >"${USHUNIT_TEMP_DIR}/tests_passed"
+  printf "%s" "${__ushunit_rt_tests_failed}" >"${USHUNIT_TEMP_DIR}/tests_failed"
+  printf "%s" "${__ushunit_rt_tests_skipped}" >"${USHUNIT_TEMP_DIR}/tests_skipped"
+  printf "%s" "${__ushunit_rt_asserts_passed}" >"${USHUNIT_TEMP_DIR}/asserts_passed"
+  printf "%s" "${__ushunit_rt_asserts_failed}" >"${USHUNIT_TEMP_DIR}/asserts_failed"
+
+  return "${__ushunit_rt_exit_code}"
+
+}
+
+# Print the command line usage for the program.
+# Arguments:
+#   none
+# Returns:
+#   none
+_ushunit_usage()
+{
+  printf "%s" "Usage: ${0} [OPTIONS] TEST_FILE...
+
+Optional Arguments:
+  -h, --help        Display this help and exit.
+  -V, --version     Output version information and exit.
+      --debug       Enable debug mode.
+
+  -t, --temp-dir    PATH
+                    Write all temporary data to this directory.
+
+Test Arguments:
+  -i, --enable-isolation
+                    All tests within the same test file are executed within
+                    a child process, ensuring that variables or functions 
+                    established in one file do not impact others.
+  -f, --filter      PATTERN
+                    Filter tests to run based on the given regex pattern.
+
+Positional Arguments:
+  TEST_FILE         Test file(s).
+"
+}
+
+# remove all existing aliases
+\unalias -a
+
+# use a safe umask for created files
+umask 027
+
+# set locale
+LANG=C
+export LANG
+LC_ALL=C
+export LC_ALL
+
+# get current working dir
+__USHUNIT_CWD=`dirname "${0}"`
+
+# set path
+__ushunit_path="/usr/xpg4/bin:/usr/xpg6/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin"
+__ushunit_path="${__ushunit_path}:/usr/local/sbin:/usr/ucb:/usr/ccs/bin:/opt/bin:/opt/sbin"
+__ushunit_path="${__ushunit_path}:/opt/local/bin:/snap/bin:/netscaler:/opt/homebrew/bin"
+
+PATH="${__ushunit_path}:${PATH}"
+export PATH
+
+# global vars
+__USHUNIT_VERSION="1.0.0"
+__USHUNIT_TEST_FUNCTION_NAME_REGEX="^ *function test.*\(\)|^ *test.*\(\)"
+__USHUNIT_DEBUG_MODE=false
+__USHUNIT_LOG_FILE="debug.log"
+
+# exposed vars
+USHUNIT_TEMP_DIR=""
+
+# local vars
+__ushunit_exit_code=0
+__ushunit_tests_total=0
+__ushunit_tests_passed=0
+__ushunit_tests_failed=0
+__ushunit_tests_skipped=0
+__ushunit_asserts_total=0
+__ushunit_asserts_passed=0
+__ushunit_asserts_failed=0
+__ushunit_temp_dir=""
+__ushunit_enable_isolation=false
+__ushunit_filter=""
+
+while [ ${#} -gt 0 ]; do
+  case "${1}" in
+    # optional arguments
+    "-h"|"--help")
+      _ushunit_usage
+      exit 1
+      ;;
+    "-V"|"--version")
+      printf "ushunit %s\n" "${__USHUNIT_VERSION}"
+      exit 0
+      ;;
+    "--debug")
+      __USHUNIT_DEBUG_MODE=true
+      ;;
+    "-t"|"--temp-dir")
+      if [ -n "${2:-}" ]; then
+          __ushunit_temp_dir="${2}"
+          shift
+        else
+          _ushunit_exit_fatal "option '${1}' requires an argument.\nTry '$0 --help' for more information."
+          return 1
+        fi
+      ;;
+    # test arguments
+    "-i"|"--enable-isolation")
+      __ushunit_enable_isolation=true
+      ;;
+    "-f"|"--filter")
+      if [ -n "${2:-}" ]; then
+          __ushunit_filter="${2}"
+          shift
+        else
+          _ushunit_exit_fatal "option '${1}' requires an argument.\nTry '$0 --help' for more information."
+          return 1
+        fi
+      ;;
+    # invalid arguments
+    -*)
+      _ushunit_exit_fatal "invalid option '${1}'\n\Try '$0 --help' for more information."
+      ;;
+    # positional arguments
+    *)
+      break
+      ;;
+  esac
+  shift
+done
+
+# treat unset variables as an error when substituting
+set -u
+
+# show usage and exit if no test file was given
+if [ -z "$*" ]; then _ushunit_usage && exit 1; fi
+
+USHUNIT_TEMP_DIR=`_ushunit_mktemp "${__ushunit_temp_dir}"` || _ushunit_exit_fatal "cannot create temporary directory"
+
+printf "0" >"${USHUNIT_TEMP_DIR}/tests_passed"
+printf "0" >"${USHUNIT_TEMP_DIR}/tests_failed"
+printf "0" >"${USHUNIT_TEMP_DIR}/tests_skipped"
+printf "0" >"${USHUNIT_TEMP_DIR}/asserts_passed"
+printf "0" >"${USHUNIT_TEMP_DIR}/asserts_failed"
+
+# clean up and exit if SIGINT (ctrl-c) is sent
+trap '_ushunit_terminate' INT
+
+if [ -n "${__ushunit_filter}" ]; then
+  __USHUNIT_TEST_FUNCTION_NAME_REGEX="^ *function ${__ushunit_filter}\(\)|^ *${__ushunit_filter}\(\)"
+fi
+
+for __ushunit_test_file in "${@}"; do
+  if [ ! -f "${__ushunit_test_file}" ]; then
+    _ushunit_exit_fatal "no such file or directory: '${__ushunit_test_file}'"
+  fi
+  __ushunit_tests_count=`grep -c -E "${__USHUNIT_TEST_FUNCTION_NAME_REGEX}" "${__ushunit_test_file}"`
+  __ushunit_tests_total=`expr "${__ushunit_tests_total}" + "${__ushunit_tests_count}"`
+done
+
+__ushunit_current_test_number=0
+printf "1..%d\n" "${__ushunit_tests_total}"
+# execute suite
+for __ushunit_test_file in "${@}"; do
+  
+  if ${__ushunit_enable_isolation}; then
+    # run tests within a child process
+    (
+      _ushunit_run_test_file "${__ushunit_current_test_number}" "${__ushunit_test_file}"
+    )
+  else
+    _ushunit_run_test_file "${__ushunit_current_test_number}" "${__ushunit_test_file}"
+  fi
+
+  __ushunit_test_exit_code="$?"
+  __ushunit_exit_code=`expr "${__ushunit_test_exit_code}" \| "${__ushunit_exit_code}"`
+
+  if [ "${__ushunit_exit_code}" -gt 1 ]; then
+    _ushunit_clean_up "${USHUNIT_TEMP_DIR}"
+    exit "${__ushunit_exit_code}"
+  fi
+
+  # retrieve statistics from current test file
+  __ushunit_tests_passed_from_file=`cat "${USHUNIT_TEMP_DIR}/tests_passed"`
+  __ushunit_tests_failed_from_file=`cat "${USHUNIT_TEMP_DIR}/tests_failed"`
+  __ushunit_tests_skipped_from_file=`cat "${USHUNIT_TEMP_DIR}/tests_skipped"`
+  __ushunit_asserts_passed_from_file=`cat "${USHUNIT_TEMP_DIR}/asserts_passed"`
+  __ushunit_asserts_failed_from_file=`cat "${USHUNIT_TEMP_DIR}/asserts_failed"`
+
+  __ushunit_tests_passed=`expr "${__ushunit_tests_passed}" + "${__ushunit_tests_passed_from_file}"`
+  __ushunit_tests_failed=`expr "${__ushunit_tests_failed}" + "${__ushunit_tests_failed_from_file}"`
+  __ushunit_tests_skipped=`expr "${__ushunit_tests_skipped}" + "${__ushunit_tests_skipped_from_file}"`
+  __ushunit_asserts_passed=`expr "${__ushunit_asserts_passed}" + "${__ushunit_asserts_passed_from_file}"`
+  __ushunit_asserts_failed=`expr "${__ushunit_asserts_failed}" + "${__ushunit_asserts_failed_from_file}"`
+  __ushunit_asserts_total=`expr "${__ushunit_asserts_total}" + "${__ushunit_asserts_passed_from_file}" + "${__ushunit_asserts_failed_from_file}"`
+
+  __ushunit_tests_count=`grep -c -E "${__USHUNIT_TEST_FUNCTION_NAME_REGEX}" "${__ushunit_test_file}"`
+  __ushunit_current_test_number=`expr "${__ushunit_tests_count}" + "${__ushunit_current_test_number}"`
+  
+done
+
+printf "# Ran %d tests (%d asserts). Passed: %d (%d asserts). Failed: %d (%d asserts). Skipped: %d.\n" "${__ushunit_tests_total}" "${__ushunit_asserts_total}" "${__ushunit_tests_passed}" "${__ushunit_asserts_passed}" "${__ushunit_tests_failed}" "${__ushunit_asserts_failed}" "${__ushunit_tests_skipped}"
+
+# clean up
+_ushunit_clean_up
+
+exit "${__ushunit_exit_code}"
